@@ -1,136 +1,140 @@
-import axios, { AxiosResponse } from "axios"
 import React, { FunctionComponent, useEffect, useState } from "react"
-import { Button } from "react-bootstrap"
+import { cardValueMap, ucFirstLetter } from "./utils/utils"
+import * as B from "./utils/base"
+import back from "./assets/img/back.png"
+import "./flip.css"
+import { fetchNextCard, fetchDeck } from "./utils/requests"
+import { Card, Deck } from "./utils/requestTypes"
 
-type Deck = {
-  success: boolean
-  deck_id: string
-  shuffled: boolean
-  remaining: number
+type GameState = {
+  cards: number[]
+  cardCount: number
+  cardPicture: string
+  guess: string
+  score: number
+  cardName: string[]
 }
 
-type CardObject = {
-  success: boolean
-  cards: Card[]
-  deck_id: string
-  remaining: number
+const initialGameState = {
+  cards: [],
+  cardCount: 52,
+  cardPicture: back,
+  guess: "",
+  score: 0,
+  cardName: [],
 }
-
-type Card = {
-  image: string
-  value: string
-  suit: string
-  code: string
-}
-
-const cardValueMap = {
-  king: 13,
-  queen: 12,
-  jack: 11,
-  ace: 1,
-} as const
 
 const App: FunctionComponent = () => {
   const [deck, setDeck] = useState<Deck>()
-  const [cards, setCards] = useState<number[]>([])
-  const [cardCount, setCardCount] = useState<any>()
-  const [cardPicture, setCardPicture] = useState<string[]>()
-  const [guess, setGuess] = useState<string>()
-  const [score, setScore] = useState<number>(0)
+  const [gameState, setGameState] = useState<GameState>(initialGameState)
 
   useEffect(() => {
-    fetchDeck().then((res) => res?.data && setDeck(res.data))
+    fetchNewDeck()
   }, [])
 
-  useEffect(() => {
-    if (
-      guess === "higher" &&
-      cards[cards.length - 1] > cards[cards.length - 2]
-    ) {
-      setScore((prevState) => prevState + 1)
-    } else if (
-      guess === "lower" &&
-      cards[cards.length - 1] < cards[cards.length - 2]
-    ) {
-      setScore((prevState) => prevState + 1)
-    }
-  }, [cards])
+  const { cards, cardCount, cardPicture, guess, score, cardName } = gameState
 
-  const fetchDeck = async () => {
-    try {
-      const res = await axios.get(
-        "https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1"
-      )
-      return res
-    } catch (e) {
-      console.log(e)
-    }
+  const fetchNewDeck = () => {
+    cardCount === 0 && setGameState(initialGameState)
+    fetchDeck().then((data) => data && setDeck(data))
   }
 
-  const drawCard = async (): Promise<AxiosResponse<CardObject> | undefined> => {
+  const handleDrawCard = (guess = "") => {
     if (deck) {
-      try {
-        const res = await axios.get(
-          `https://deckofcardsapi.com/api/deck/${deck.deck_id}/draw/?count=1`
-        )
-        return res
-      } catch (e) {
-        console.log(e)
-      }
+      fetchNextCard(deck).then((data) => {
+        if (data) {
+          const image = data.cards[0].image
+          const cardNameArr = handleCardName(ucFirstLetter(data.cards[0].value))
+          const cardValue = handleCardValue(data.cards[0])
+
+          const updateScore = handleScore(
+            guess,
+            cards[cards.length - 1],
+            cardValue
+          )
+          setGameState({
+            ...gameState,
+            cardCount: data.remaining,
+            cardPicture: image,
+            guess: guess,
+            score: gameState.score + updateScore,
+            cardName: cardNameArr,
+            cards: [...gameState.cards, cardValue],
+          })
+        }
+      })
     }
   }
 
-  const handleDrawCard = () => {
-    drawCard().then((response) => {
-      if (response) {
-        setCardCount(response.data.remaining)
-        const images = response.data.cards.map((card) => card.image)
-        setCardPicture(images)
+  const handleCardName = (formattedCardName: string): string[] =>
+    gameState.cardName
+      ? [
+          ...gameState.cardName.slice(gameState.cardName.length - 1),
+          formattedCardName,
+        ]
+      : [formattedCardName]
 
-        const cardValues = handleCardValues(response.data.cards)
-        setCards([...cards, ...cardValues])
-      }
-    })
+  const handleCardValue = (card: Card): number => cardValueMap[card.value]
+
+  const handleScore = (guess: string, prevCard: number, curCard: number) => {
+    if (guess === "higher" && curCard > prevCard) {
+      return 1
+    } else if (guess === "lower" && curCard < prevCard) {
+      return 1
+    }
+    return 0
   }
 
-  const handleCardValues = (cards: Card[]): number[] => {
-    //loop cards, if NaN -> map, else -> number(card)
-
-    const formattedCards = cards.map((card) => {
-      // for (const key in cardValueMap) {
-      //   console.log(cardValueMap[key])
-      // }
-
-      if (card.value.toLowerCase() === "ace") return 1
-      if (card.value.toLowerCase() === "king") return 13
-      if (card.value.toLowerCase() === "queen") return 12
-      if (card.value.toLowerCase() === "jack") return 11
-      //cardValueMap[key] not working??
-      return Number(card.value)
-    })
-    return formattedCards
-  }
-
-  const handleGuess = (guess: string) => {
-    setGuess(guess)
-  }
+  const onClickHigher = () => handleDrawCard("higher")
+  const onClickLower = () => handleDrawCard("lower")
+  const onClickFirst = () => handleDrawCard()
 
   return (
-    <div>
-      <div> Cards left: {cardCount ? cardCount : "NaN"}</div>
-      <div>
-        {cardPicture && cardPicture.map((card) => <img src={card} alt="" />)}
+    <div className="h-screen bg-gray-200 font-semibold">
+      <div className="container mx-auto text-center">
+        <div className="flex justify-center">
+          <img className="rounded-xl" src={cardPicture} alt="" />
+        </div>
+
+        <div className="flex-column flex-initial justify-center text-center">
+          <div className="text-center justify-self-center">
+            Cards left: {cardCount}
+          </div>
+          <div>
+            Score: {score}/{cardCount === 52 ? 0 : 51 - cardCount}
+          </div>
+        </div>
+
+        {cards.length > 1 && (
+          <div>
+            You guessed {guess === "higher" ? "larger than " : "Smaller than "}
+            {cardName && cardName.length > 1 && cardName[0]}
+          </div>
+        )}
+
+        {cardCount === 52 && (
+          <button onClick={onClickFirst} className={B.btnBlue}>
+            Play
+          </button>
+        )}
+
+        {cardCount === 0 && (
+          <button onClick={fetchNewDeck} className={B.btnBlue}>
+            Reset
+          </button>
+        )}
+
+        {!!cards.length && cardCount !== 0 && (
+          <div>
+            <button onClick={onClickHigher} className={B.btnBlue}>
+              Guess higher
+            </button>
+            <button onClick={onClickLower} className={B.btnBlue}>
+              Guess lower
+            </button>
+          </div>
+        )}
       </div>
-      <button onClick={handleDrawCard}>Draw card</button>
-      <div>
-        <button onClick={() => handleGuess("higher")}>Higher?</button>
-        <button onClick={() => handleGuess("lower")}>Lower?</button>
-      </div>
-      <div>
-        Your guess: {guess === "higher" ? "> " : " < "}
-        {cards[cards.length - 1]}
-      </div>
-      <div> Score: {score}</div>
     </div>
   )
 }
