@@ -8,7 +8,7 @@ export const fetchDeck = async (): Promise<Deck | void> => {
     )
     return res.data
   } catch (e) {
-    console.log(e.message)
+    console.error(e.message)
   }
 }
 
@@ -21,6 +21,6 @@ export const fetchNextCard = async ({
     )
     return res.data
   } catch (e) {
-    console.log(e.message)
+    console.error(e.message)
   }
 }
