@@ -92,7 +92,7 @@ const GameScreen: FunctionComponent = () => {
     <div className="h-screen bg-gray-300 font-semibold font-sans pt-8 text-lg">
       <div
         className="container mx-auto text-center juistify-center space-y-2 w-80 
-      rounded-xl pb-4 text-white bg-gray-700 font-sans"
+      rounded-xl pb-8 text-white bg-gray-700 font-sans"
       >
         <h1 className="font-sans text-xl pt-4 pb-4 bg-black rounded-t-xl">
           GUESS HIGHER OR LOWER
@@ -142,10 +142,10 @@ const GameScreen: FunctionComponent = () => {
 
           {!!cards.length && cardCount !== 0 && (
             <div className="inline-flex w-64 justify-center space-x-8 pt-2">
-              <button onClick={onClickLower} className={B.btnRed}>
+              <button onClick={onClickLower} className={`${B.btnRed} w-24`}>
                 Lower
               </button>
-              <button onClick={onClickHigher} className={B.btnBlue}>
+              <button onClick={onClickHigher} className={`${B.btnBlue} w-24`}>
                 Higher
               </button>
             </div>
